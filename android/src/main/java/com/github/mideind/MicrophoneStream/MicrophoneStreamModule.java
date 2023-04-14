@@ -128,7 +128,7 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
             audioRecord.read(buffer, 0, bufferSize);
             // Changes by Miðeind: removed G711 codec conversion
 
-            for (short value : encoded) {
+            for (short value : buffer) {
                 data.pushInt((int) value);
             }
             eventEmitter.emit("audioData", data);
