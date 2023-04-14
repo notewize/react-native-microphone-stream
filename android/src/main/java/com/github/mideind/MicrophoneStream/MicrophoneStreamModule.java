@@ -1,4 +1,4 @@
-package com.github.chadsmith.MicrophoneStream;
+package com.github.mideind.MicrophoneStream;
 
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -126,6 +126,7 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
         while (running && !reactContext.getCatalystInstance().isDestroyed()) {
             WritableArray data = Arguments.createArray();
             audioRecord.read(buffer, 0, bufferSize);
+            // Changes by Miðeind: removed G711 codec conversion
 
             for (short value : encoded) {
                 data.pushInt((int) value);

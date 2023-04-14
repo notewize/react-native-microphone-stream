@@ -12,7 +12,7 @@ Pod::Spec.new do |s|
   s.homepage     = package['homepage']
   s.platform     = :ios, "9.0"
 
-  s.source       = { :git => "https://github.com/chadsmith/react-native-microphone-stream.git", :tag => "master" }
+  s.source       = { :git => "https://github.com/mideind/react-native-microphone-stream.git", :tag => "master" }
   s.source_files  = "ios/**/*.{h,m}"
 
   s.dependency 'React'

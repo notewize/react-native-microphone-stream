@@ -91,6 +91,7 @@ RCT_EXPORT_METHOD(stop) {
     NSMutableArray *array  = [NSMutableArray arrayWithCapacity:count];
 
     for (int i = 0; i < count; ++i)
+        // Changes by Miðeind: Removed u-law conversion
         [array addObject:[NSNumber numberWithInteger:audioData[i]]];
 
     [self sendEventWithName:@"audioData" body:array];

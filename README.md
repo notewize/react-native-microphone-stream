@@ -3,8 +3,7 @@ React Native module used for two-way audio
 
 ## Install
 ```
-$ npm i git://github.com/chadsmith/react-native-microphone-stream.git
-$ react-native link react-native-microphone-stream
+$ npm i git://github.com/mideind/react-native-microphone-stream.git
 ```
 
 ## Usage
@@ -14,7 +13,7 @@ import MicStream from 'react-native-microphone-stream';
 const listener = MicStream.addListener(data => console.log(data));
 MicStream.init({
   bufferSize: 4096,
-  sampleRate: 44100,
+  sampleRate: 16000,
   bitsPerChannel: 16,
   channelsPerFrame: 1,
 });

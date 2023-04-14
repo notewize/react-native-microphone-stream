@@ -1,5 +1,5 @@
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.github.chadsmith.MicrophoneStream">
+    package="com.github.mideind.MicrophoneStream">
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 </manifest>
