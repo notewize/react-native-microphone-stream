@@ -31,32 +31,6 @@ static int search(int val, int *table, int size) {
     return (size);
 }
 
-int linear2ulaw(int pcm_val) {
-    int mask;
-    int seg;
-    int uval;
-
-    pcm_val = pcm_val >> 2;
-    if (pcm_val < 0) {
-        pcm_val = -pcm_val;
-        mask = 0x7F;
-    } else {
-        mask = 0xFF;
-    }
-    if (pcm_val > CLIP)
-        pcm_val = CLIP;
-    pcm_val += (BIAS >> 2);
-
-    seg = search(pcm_val, seg_uend, 8);
-
-    if (seg >= 8)
-        return (0x7F ^ mask);
-    else {
-        uval = (seg << 4) | ((pcm_val >> (seg + 1)) & 0xF);
-        return (uval ^ mask);
-    }
-}
-
 RCT_EXPORT_MODULE()
 
 RCT_EXPORT_METHOD(init:(NSDictionary *) options) {
@@ -117,7 +91,7 @@ RCT_EXPORT_METHOD(stop) {
     NSMutableArray *array  = [NSMutableArray arrayWithCapacity:count];
 
     for (int i = 0; i < count; ++i)
-        [array addObject:[NSNumber numberWithInteger:linear2ulaw(audioData[i])]];
+        [array addObject:[NSNumber numberWithInteger:audioData[i]]];
 
     [self sendEventWithName:@"audioData" body:array];
     AudioQueueEnqueueBuffer(queue, inBuffer, 0, NULL);
