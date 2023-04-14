@@ -1,5 +1,5 @@
 # react-native-microphone-stream
-React Native module used for two-way audio
+React Native module used for streaming microphone input.
 
 ## Install
 ```
