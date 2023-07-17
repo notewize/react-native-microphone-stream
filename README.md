@@ -2,8 +2,8 @@
 React Native module used for streaming microphone input.
 
 ## Install
-```
-$ npm i git://github.com/mideind/react-native-microphone-stream.git
+```sh
+npm i git://github.com/mideind/react-native-microphone-stream.git
 ```
 
 ## Usage
@@ -14,11 +14,11 @@ const listener = MicStream.addListener(data => console.log(data));
 MicStream.init({
   bufferSize: 4096,
   sampleRate: 16000,
-  bitsPerChannel: 16,
-  channelsPerFrame: 1,
+  bitsPerSample: 16,
+  audioChannels: 1,
 });
 MicStream.start();
-...
+/* ... */
 MicStream.stop();
 listener.remove();
 ```

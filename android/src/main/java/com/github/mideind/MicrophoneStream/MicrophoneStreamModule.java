@@ -54,21 +54,18 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
         }
 
         int channelConfig = AudioFormat.CHANNEL_IN_MONO;
-        if (options.hasKey("channelsPerFrame")) {
-            int channelsPerFrame = options.getInt("channelsPerFrame");
-
+        if (options.hasKey("audioChannels")
+            && options.getInt("audioChannels") == 2) {
             // every other case --> CHANNEL_IN_MONO
-            if (channelsPerFrame == 2) {
-                channelConfig = AudioFormat.CHANNEL_IN_STEREO;
-            }
+            channelConfig = AudioFormat.CHANNEL_IN_STEREO;
         }
 
         // we support only 8-bit and 16-bit PCM
         int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-        if (options.hasKey("bitsPerChannel")) {
-            int bitsPerChannel = options.getInt("bitsPerChannel");
+        if (options.hasKey("bitsPerSample")) {
+            int bitsPerSample = options.getInt("bitsPerSample");
 
-            if (bitsPerChannel == 8) {
+            if (bitsPerSample == 8) {
                 audioFormat = AudioFormat.ENCODING_PCM_8BIT;
             }
         }
@@ -80,11 +77,13 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
         }
 
         audioRecord = new AudioRecord(
-                MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-                sampleRateInHz,
-                channelConfig,
-                audioFormat,
-                this.bufferSize * 2);
+            // TODO: Test https://developer.android.com/reference/android/media/MediaRecorder.AudioSource [MIC or UNPROCESSED or VOICE_PERFORMANCE]
+            MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+            sampleRateInHz,
+            channelConfig,
+            audioFormat,
+            this.bufferSize * 2
+        );
 
         recordingThread = new Thread(new Runnable() {
             public void run() {
@@ -95,7 +94,10 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void start() {
-        if (!running && audioRecord != null && audioRecord.getState() != AudioRecord.STATE_UNINITIALIZED && recordingThread != null) {
+        if (!running
+            && audioRecord != null
+            && audioRecord.getState() != AudioRecord.STATE_UNINITIALIZED
+            && recordingThread != null) {
             running = true;
             audioRecord.startRecording();
             recordingThread.start();
@@ -104,7 +106,8 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void pause() {
-        if (audioRecord != null && audioRecord.getState() == AudioRecord.RECORDSTATE_RECORDING) {
+        if (audioRecord != null
+            && audioRecord.getState() == AudioRecord.RECORDSTATE_RECORDING) {
             running = false;
             audioRecord.stop();
         }
@@ -112,7 +115,8 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void stop() {
-        if (audioRecord != null && audioRecord.getState() != AudioRecord.STATE_UNINITIALIZED) {
+        if (audioRecord != null
+            && audioRecord.getState() != AudioRecord.STATE_UNINITIALIZED) {
             running = false;
             audioRecord.stop();
             audioRecord.release();
@@ -121,12 +125,12 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
     }
 
     private void recording() {
+        // Changes by Miðeind: removed G711 codec conversion
         short buffer[] = new short[bufferSize];
 
         while (running && !reactContext.getCatalystInstance().isDestroyed()) {
             WritableArray data = Arguments.createArray();
             audioRecord.read(buffer, 0, bufferSize);
-            // Changes by Miðeind: removed G711 codec conversion
 
             for (short value : buffer) {
                 data.pushInt((int) value);

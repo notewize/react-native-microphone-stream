@@ -1,7 +1,5 @@
 #import "MicrophoneStream.h"
 
-#define BIAS (0x84)
-#define CLIP 8159
 
 @implementation MicrophoneStream {
     AudioQueueRef _queue;
@@ -20,16 +18,6 @@ void inputCallback(
     [(__bridge MicrophoneStream *) inUserData processInputBuffer:inBuffer queue:inAQ];
 }
 
-int seg_uend[8] = { 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF, 0x1FFF };
-
-static int search(int val, int *table, int size) {
-    int i;
-    for (i = 0; i < size; i++) {
-        if (val <= *table++)
-            return (i);
-    }
-    return (size);
-}
 
 RCT_EXPORT_MODULE()
 
@@ -43,8 +31,8 @@ RCT_EXPORT_METHOD(init:(NSDictionary *) options) {
     AudioStreamBasicDescription description;
     description.mReserved = 0;
     description.mSampleRate = options[@"sampleRate"] == nil ? 44100 : [options[@"sampleRate"] doubleValue];
-    description.mBitsPerChannel = options[@"bitsPerChannel"] == nil ? 16 : [options[@"bitsPerChannel"] unsignedIntegerValue];
-    description.mChannelsPerFrame = options[@"channelsPerFrame"] == nil ? 1 : [options[@"channelsPerFrame"] unsignedIntegerValue];
+    description.mBitsPerSample = options[@"bitsPerSample"] == nil ? 16 : [options[@"bitsPerSample"] unsignedIntegerValue];
+    description.mAudioChannels = options[@"audioChannels"] == nil ? 1 : [options[@"audioChannels"] unsignedIntegerValue];
     description.mFramesPerPacket = options[@"framesPerPacket"] == nil ? 1 : [options[@"framesPerPacket"] unsignedIntegerValue];
     description.mBytesPerFrame = options[@"bytesPerFrame"] == nil ? 2 : [options[@"bytesPerFrame"] unsignedIntegerValue];
     description.mBytesPerPacket = options[@"bytesPerPacket"] == nil ? 2 : [options[@"bytesPerPacket"] unsignedIntegerValue];
