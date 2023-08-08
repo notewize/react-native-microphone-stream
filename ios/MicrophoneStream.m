@@ -26,7 +26,7 @@ RCT_EXPORT_METHOD(init:(NSDictionary *) options) {
     _category = [session category];
     _mode = [session mode];
 
-    UInt32 bufferSize = options[@"bufferSize"] == nil ? 8192 : [options[@"bufferSize"] unsignedIntegerValue];
+    UInt32 bufferSize = options[@"bufferSize"] == nil ? 4096 : [options[@"bufferSize"] unsignedIntegerValue];
 
     AudioStreamBasicDescription description;
     description.mReserved = 0;
