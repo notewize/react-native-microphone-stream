@@ -41,17 +41,16 @@ const GREETING = {
 function socketBlobSender(socket: WebSocket) {
   return (blob: number[]) => socket.send(new Int16Array(blob).buffer);
 }
-
+var ws: WebSocket;
+var listener: any;
 MicStream.init({
   sampleRate: 16000,
   bitsPerSample: 16,
   audioChannels: 1,
 });
 
-async function handleReply(event) {
+async function handleReply(event: WebSocketMessageEvent) {
   console.log('[message] Data received from server:');
-  let socket = this;
-  var listener = MicStream.addListener(socketBlobSender(socket));
   // Server should only ever return JSON messages. If not, ignore.
   if (event && event.data && typeof event.data === 'string') {
     var resp = JSON.parse(event.data);
@@ -80,10 +79,10 @@ async function handleReply(event) {
         console.log(`[result] Query answer: "${resp.data.answer}"`);
       }
       // Finally, close the socket
-      socket.close();
+      ws.close();
     } else if (resp.type === 'error') {
       // Some error occurred, might be timeout
-      socket.close();
+      ws.close();
       MicStream.stop();
       listener.remove();
     }
@@ -98,13 +97,14 @@ function toggleRecording() {
     console.log('Starting audio recording...');
 
     // CREATE WEBSOCKET
-    var ws = new WebSocket(WS_URL);
+    ws = new WebSocket(WS_URL);
     ws.onopen = function () {
       console.log('[ws] Connection established');
 
       let msg_str = JSON.stringify(GREETING);
       console.log(`[ws] Sending greetings to server: ${msg_str}`);
       ws.send(msg_str);
+      listener = MicStream.addListener(socketBlobSender(ws));
       console.log('[ws] Waiting for greetings response...');
     };
 
