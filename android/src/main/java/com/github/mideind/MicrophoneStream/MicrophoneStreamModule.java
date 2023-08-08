@@ -17,7 +17,7 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
     private final ReactApplicationContext reactContext;
     private DeviceEventManagerModule.RCTDeviceEventEmitter eventEmitter;
     private boolean running;
-    private int bufferSize;
+    private int bufferSize = 4096;
     private Thread recordingThread;
 
     MicrophoneStreamModule(ReactApplicationContext reactContext) {
@@ -72,16 +72,12 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
 
         audioRecord = new AudioRecord(
             // TODO: Test https://developer.android.com/reference/android/media/MediaRecorder.AudioSource [MIC or UNPROCESSED or VOICE_PERFORMANCE]
-            MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+            MediaRecorder.AudioSource.VOICE_RECOGNITION,
             sampleRateInHz,
             channelConfig,
             audioFormat,
-            16000
+            this.bufferSize * 4
         );
-
-        if (audioRecord.getState() != STATE_INITIALIZED) {
-            // TODO: How do I raise an error into javascript?
-        }
 
         recordingThread = new Thread(new Runnable() {
             public void run() {
@@ -124,10 +120,10 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
 
     private void recording() {
         // Changes by Miðeind: removed G711 codec conversion
-        short buffer[] = new short[4096];
+        short buffer[] = new short[this.bufferSize];
         while (running && !reactContext.getCatalystInstance().isDestroyed()) {
             WritableArray data = Arguments.createArray();
-            audioRecord.read(buffer, 0, bufferSize);
+            audioRecord.read(buffer, 0, this.bufferSize);
 
             for (short value : buffer) {
                 data.pushInt((int) value);
