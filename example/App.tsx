@@ -26,7 +26,7 @@ import MicStream from 'react-native-microphone-stream';
 
 var isRecording: boolean = false;
 var audioByteLen: number = 0;
-const WS_URL = 'ws://192.168.1.208:8080/rat/v1/short_asr';
+const WS_URL = 'ws://192.168.1.243:8080/rat/v1/short_asr';
 const GREETING = {
   type: 'greetings',
   token: '',
