@@ -31,8 +31,8 @@ RCT_EXPORT_METHOD(init:(NSDictionary *) options) {
     AudioStreamBasicDescription description;
     description.mReserved = 0;
     description.mSampleRate = options[@"sampleRate"] == nil ? 44100 : [options[@"sampleRate"] doubleValue];
-    description.mBitsPerSample = options[@"bitsPerSample"] == nil ? 16 : [options[@"bitsPerSample"] unsignedIntegerValue];
-    description.mAudioChannels = options[@"audioChannels"] == nil ? 1 : [options[@"audioChannels"] unsignedIntegerValue];
+    description.mBitsPerChannel = options[@"bitsPerSample"] == nil ? 16 : [options[@"bitsPerSample"] unsignedIntegerValue];
+    description.mChannelsPerFrame = options[@"audioChannels"] == nil ? 1 : [options[@"audioChannels"] unsignedIntegerValue];
     description.mFramesPerPacket = options[@"framesPerPacket"] == nil ? 1 : [options[@"framesPerPacket"] unsignedIntegerValue];
     description.mBytesPerFrame = options[@"bytesPerFrame"] == nil ? 2 : [options[@"bytesPerFrame"] unsignedIntegerValue];
     description.mBytesPerPacket = options[@"bytesPerPacket"] == nil ? 2 : [options[@"bytesPerPacket"] unsignedIntegerValue];
