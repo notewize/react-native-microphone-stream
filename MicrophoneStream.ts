@@ -7,6 +7,7 @@ interface StreamOptions {
   sampleRate?: number;
   bitsPerSample?: number;
   audioChannels?: number;
+  bufferSize?: number;
 }
 
 export default {
