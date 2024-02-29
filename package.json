@@ -27,7 +27,7 @@
   },
   "main": "MicrophoneStream.ts",
   "peerDependencies": {
-    "react-native": ">=0.47"
+    "react-native": ">=0.72"
   },
   "devDependencies": {}
 }
