@@ -1,8 +1,8 @@
 {
   "name": "react-native-microphone-stream",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "React Native module used for streaming audio from microphone",
-  "author": "Miðeind <mideind@mideind.is>",
+  "author": "Eric Bloch <eric.bloch@notewize.com>",
   "license": "MIT",
   "contributors": [
     {
@@ -12,6 +12,10 @@
     {
       "name": "Chad Smith",
       "email": "chad@developer.email"
+    },
+    {
+      "name": "Eric Bloch",
+      "email": "eric.bloch@gmail.com"
     }
   ],
   "keywords": [
@@ -20,10 +24,10 @@
     "recording",
     "microphone"
   ],
-  "homepage": "https://github.com/mideind/react-native-microphone-stream",
+  "homepage": "https://github.com/notewize/react-native-microphone-stream",
   "repository": {
     "type": "git",
-    "url": "git@github.com:mideind/react-native-microphone-stream.git"
+    "url": "git@github.com:notewize/react-native-microphone-stream.git"
   },
   "main": "MicrophoneStream.ts",
   "peerDependencies": {

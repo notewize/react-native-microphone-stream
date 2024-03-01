@@ -12,13 +12,16 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
+import android.util.Log;
+
 class MicrophoneStreamModule extends ReactContextBaseJavaModule {
     private AudioRecord audioRecord;
     private final ReactApplicationContext reactContext;
     private DeviceEventManagerModule.RCTDeviceEventEmitter eventEmitter;
-    private boolean running;
+    private volatile boolean running;
     private int bufferSize = 4096;
     private Thread recordingThread;
+
 
     MicrophoneStreamModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -32,6 +35,8 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void init(ReadableMap options) {
+        Log.d("MicStream", "init");
+
         if (eventEmitter == null) {
             eventEmitter = reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class);
         }
@@ -54,81 +59,91 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
         }
 
         int channelConfig = AudioFormat.CHANNEL_IN_MONO;
-        if (options.hasKey("audioChannels")
-            && options.getInt("audioChannels") == 2) {
-            // every other case --> CHANNEL_IN_MONO
-            channelConfig = AudioFormat.CHANNEL_IN_STEREO;
-        }
+        int audioFormat = AudioFormat.ENCODING_PCM_FLOAT;
 
-        // we support only 8-bit and 16-bit PCM
-        int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-        if (options.hasKey("bitsPerSample")) {
-            int bitsPerSample = options.getInt("bitsPerSample");
-
-            if (bitsPerSample == 8) {
-                audioFormat = AudioFormat.ENCODING_PCM_8BIT;
-            }
+        if (options.hasKey("bufferSize")) {
+            this.bufferSize = options.getInt("bufferSize");
         }
 
         audioRecord = new AudioRecord(
             // TODO: Test https://developer.android.com/reference/android/media/MediaRecorder.AudioSource [MIC or UNPROCESSED or VOICE_PERFORMANCE]
-            MediaRecorder.AudioSource.VOICE_RECOGNITION,
+            MediaRecorder.AudioSource.DEFAULT,
             sampleRateInHz,
             channelConfig,
             audioFormat,
             this.bufferSize * 4
         );
-
-        recordingThread = new Thread(new Runnable() {
-            public void run() {
-                recording();
-            }
-        }, "RecordingThread");
     }
 
     @ReactMethod
     public void start() {
-        if (!running
-            && audioRecord != null
-            && audioRecord.getState() != AudioRecord.STATE_UNINITIALIZED
-            && recordingThread != null) {
+        Log.d("MicStream", "start");
+
+        if (audioRecord == null) {
+            return;
+        }
+
+        if (!running) {
             running = true;
+            recordingThread = new Thread(new Runnable() {
+                public void run() {
+                    recording();
+                }
+            }, "RecordingThread");
             audioRecord.startRecording();
             recordingThread.start();
+
         }
     }
 
     @ReactMethod
     public void pause() {
-        if (audioRecord != null
-            && audioRecord.getState() == AudioRecord.RECORDSTATE_RECORDING) {
-            running = false;
-            audioRecord.stop();
+        Log.d("MicStream", "Pause.");
+        if (!running || audioRecord == null) {
+            return;
         }
-    }
 
-    @ReactMethod
-    public void stop() {
-        if (audioRecord != null
-            && audioRecord.getState() != AudioRecord.STATE_UNINITIALIZED) {
-            running = false;
-            audioRecord.stop();
-            audioRecord.release();
-            audioRecord = null;
-        }
+        Log.d("MicStream", "setting running to false");
+        running = false; // This will cause the thread to exit
+        audioRecord.stop();
+        recordingThread = null;
+        // audioRecord.release();
+
     }
 
     private void recording() {
-        // Changes by Miðeind: removed G711 codec conversion
-        short buffer[] = new short[this.bufferSize];
-        while (running && !reactContext.getCatalystInstance().isDestroyed()) {
+        Log.d("MicStream", "Recording thread up...");
+        float buffer[] = new float[this.bufferSize];
+        while (running) {
             WritableArray data = Arguments.createArray();
-            audioRecord.read(buffer, 0, this.bufferSize);
+            Log.d("MicStream", "About to read");
+            int result = audioRecord.read(buffer, 0, this.bufferSize, AudioRecord.READ_BLOCKING);
 
-            for (short value : buffer) {
-                data.pushInt((int) value);
+            Log.d("MicStream", "About to build bridge data");
+            for (float value : buffer) {
+                data.pushDouble((double) value);
             }
+            Log.d("MicStream", "Emit data.");
+            Log.d("MicStream", String.valueOf(buffer[0]));
+            Log.d("MicStream", String.valueOf(data.size()));
+            Log.d("MicStream", String.valueOf(data.getDouble(0)));
+
+
+
             eventEmitter.emit("audioData", data);
+            eventEmitter.emit("debug", "Hello");
         }
+        Log.d("MicStream", "Recording thread exiting.");
+
+    }
+
+    @ReactMethod
+    public void addListener(String eventName) {
+
+    }
+
+    @ReactMethod
+    public void removeListeners(Integer count) {
+
     }
 }

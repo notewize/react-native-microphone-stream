@@ -5,7 +5,7 @@
  * @format
  */
 
-import React from 'react';
+import React, {useState} from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -15,6 +15,7 @@ import {
   useColorScheme,
   View,
   Platform,
+  Text,
 } from 'react-native';
 
 import {Colors, Header} from 'react-native/Libraries/NewAppScreen';
@@ -23,118 +24,6 @@ import {Colors, Header} from 'react-native/Libraries/NewAppScreen';
 import {request, PERMISSIONS} from 'react-native-permissions';
 // Import MicStream object
 import MicStream from 'react-native-microphone-stream';
-
-var isRecording: boolean = false;
-var audioByteLen: number = 0;
-const WS_URL = 'ws://192.168.1.243:8080/rat/v1/short_asr';
-const GREETING = {
-  type: 'greetings',
-  token: '',
-  data: {
-    asr_options: {
-      engine: 'azure',
-    },
-    query: false,
-  },
-};
-
-function socketBlobSender(socket: WebSocket) {
-  return (blob: number[]) => socket.send(new Int16Array(blob).buffer);
-}
-var ws: WebSocket;
-var listener: any;
-MicStream.init({
-  sampleRate: 16000,
-  bitsPerSample: 16,
-  audioChannels: 1,
-});
-
-async function handleReply(event: WebSocketMessageEvent) {
-  console.log('[message] Data received from server:');
-  // Server should only ever return JSON messages. If not, ignore.
-  if (event && event.data && typeof event.data === 'string') {
-    var resp = JSON.parse(event.data);
-    console.log(event.data);
-
-    if (resp.type === 'asr_result') {
-      // ASR responses
-      if (resp.is_final) {
-        // ASR finished, we can stop streaming mic input
-        console.log('[audio] ASR finished, stopping audio input...');
-        MicStream.stop();
-        listener.remove();
-      }
-    }
-
-    if (resp.type === 'greetings') {
-      console.log('[message] Received greeting from server');
-      // Start streaming audio
-      MicStream.start();
-      console.log('[audio] Audio streaming ready. You can start speaking');
-    } else if (resp.type === 'query_result') {
-      // We've received the query result, print it
-      if (resp.data.error !== undefined) {
-        console.log("[result] Query server didn't understand query");
-      } else {
-        console.log(`[result] Query answer: "${resp.data.answer}"`);
-      }
-      // Finally, close the socket
-      ws.close();
-    } else if (resp.type === 'error') {
-      // Some error occurred, might be timeout
-      ws.close();
-      MicStream.stop();
-      listener.remove();
-    }
-  }
-}
-
-function toggleRecording() {
-  isRecording = !isRecording;
-
-  console.log(`isRecording: ${isRecording}`);
-  if (isRecording) {
-    console.log('Starting audio recording...');
-
-    // CREATE WEBSOCKET
-    ws = new WebSocket(WS_URL);
-    ws.onopen = function () {
-      console.log('[ws] Connection established');
-
-      let msg_str = JSON.stringify(GREETING);
-      console.log(`[ws] Sending greetings to server: ${msg_str}`);
-      ws.send(msg_str);
-      listener = MicStream.addListener(socketBlobSender(ws));
-      console.log('[ws] Waiting for greetings response...');
-    };
-
-    ws.onmessage = handleReply;
-
-    ws.onclose = function (event) {
-      if (event.code === 1000) {
-        console.log(
-          `[ws] Connection closed cleanly, code=${event.code} reason=${event.reason}`,
-        );
-      } else {
-        // e.g. server process killed or network down
-        // event.code is usually 1006 in this case
-        console.log('[ws] Connection died');
-      }
-    };
-
-    ws.onerror = function (error) {
-      console.log(`[error] ${error.message}`);
-    };
-
-    console.log('Started.');
-  } else {
-    console.log('Stopping audio recording...');
-    MicStream.stop();
-    console.log('Stopped.');
-    console.log(`Audio bytes: ${audioByteLen / 1000} kb`);
-    audioByteLen = 0;
-  }
-}
 
 async function reqPerms() {
   await request(
@@ -147,12 +36,39 @@ async function reqPerms() {
   });
 }
 
+MicStream.init({
+  sampleRate: 16000,
+});
+
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
+  const [isListening, setIsListening] = useState(false);
+  const [data, setData] = useState<number>();
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
+
+  function toggleRecording() {
+    const isRecording = !isListening;
+    setIsListening(isRecording);
+
+    console.log(`isRecording: ${isRecording}`);
+    if (isRecording) {
+      console.log('Starting audio recording...');
+      MicStream.addListener((data: number[]) => {
+        console.log('Data size: ', data.length);
+        setData(data.length);
+      });
+      MicStream.start();
+
+      console.log('Started.');
+    } else {
+      console.log('Stopping audio recording...');
+      MicStream.pause();
+      console.log('Stopped.');
+    }
+  }
 
   reqPerms();
   return (
@@ -166,9 +82,13 @@ function App(): React.JSX.Element {
         style={backgroundStyle}>
         <Header />
         <View style={styles.myButton}>
-          <Button onPress={toggleRecording} title="Start recording" />
+          <Button
+            onPress={toggleRecording}
+            title={isListening ? 'Recording' : 'Start recording'}
+          />
         </View>
       </ScrollView>
+      <Text style={styles.data}>{data}</Text>
     </SafeAreaView>
   );
 }
@@ -179,6 +99,9 @@ const styles = StyleSheet.create({
     height: '80%',
     alignSelf: 'center',
     padding: 50,
+  },
+  data: {
+    alignSelf: 'center',
   },
 });
 

@@ -1,9 +1,21 @@
 # react-native-microphone-stream
 React Native module used for streaming microphone input.
 
+## Notewize edition
+We've forked this repo and in attempt to simplify and improve it.
+
+- Supports Float32 format only.  
+- No processing on the PCM data for now.
+- DEFAULT input source on Android
+- bufferSize param to init working
+- no more stop() function, just start() and pause(), which both work on repeated execution
+- ripped out code in the example that was someones custom joy
+- Fixed types as needed (the listener receives an array, not a blob)
+- Works on React Native 0.72
+
 ## Install
 ```sh
-npm i git://github.com/mideind/react-native-microphone-stream.git
+npm i git://github.com/notewize/react-native-microphone-stream.git
 ```
 
 ## Usage
@@ -14,8 +26,6 @@ const listener = MicStream.addListener(data => console.log(data));
 MicStream.init({
   bufferSize: 4096,
   sampleRate: 16000,
-  bitsPerSample: 16,
-  audioChannels: 1,
 });
 MicStream.start();
 /* ... */

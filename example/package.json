@@ -12,7 +12,7 @@
   "dependencies": {
     "react": "18.2.0",
     "react-native": "0.72.3",
-    "react-native-microphone-stream": "file:../react-native-microphone-stream-0.0.1.tgz",
+    "react-native-microphone-stream": "file:../react-native-microphone-stream-0.0.2.tgz",
     "react-native-permissions": "^3.8.4"
   },
   "devDependencies": {
