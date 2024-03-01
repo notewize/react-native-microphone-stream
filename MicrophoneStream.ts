@@ -16,6 +16,6 @@ export default {
   },
   start: () => MicrophoneStream.start(),
   pause: () => MicrophoneStream.pause(),
-  addListener: (listener: (data: Blob) => void) => emitter.addListener('audioData', listener),
+  addListener: (listener: (data: number[]) => void) => emitter.addListener('audioData', listener),
   removeAllListeners: () => emitter.removeAllListeners('audioData'),
 };
