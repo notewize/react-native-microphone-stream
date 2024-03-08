@@ -3,6 +3,7 @@ package com.github.mideind.MicrophoneStream;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.media.AudioTimestamp;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -21,6 +22,12 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
     private volatile boolean running;
     private int bufferSize = 4096;
     private Thread recordingThread;
+    private long lastFramePosition = 0;
+    private long lastNanoTime = 0;
+    private boolean isFirstRead = true;
+    private int sampleRateInHz = 16000;
+    private long accumulatedFrameDiff = 0;
+    private long accumulatedTimeDiff = 0;
 
 
     MicrophoneStreamModule(ReactApplicationContext reactContext) {
@@ -53,7 +60,6 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
         // for parameter description, see
         // https://developer.android.com/reference/android/media/AudioRecord.html
 
-        int sampleRateInHz = 16000;
         if (options.hasKey("sampleRate")) {
             sampleRateInHz = options.getInt("sampleRate");
         }
@@ -105,7 +111,6 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
 
         Log.d("MicStream", "setting running to false");
         running = false; // This will cause the thread to exit
-        audioRecord.stop();
         recordingThread = null;
         // audioRecord.release();
 
@@ -114,26 +119,61 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
     private void recording() {
         Log.d("MicStream", "Recording thread up...");
         float buffer[] = new float[this.bufferSize];
+        AudioTimestamp timestamp = new AudioTimestamp();
+
         while (running) {
             WritableArray data = Arguments.createArray();
-            Log.d("MicStream", "About to read");
+            // Log.d("MicStream", "About to read");
             int result = audioRecord.read(buffer, 0, this.bufferSize, AudioRecord.READ_BLOCKING);
+            if (audioRecord.getTimestamp(timestamp, AudioTimestamp.TIMEBASE_MONOTONIC) == AudioRecord.SUCCESS) {
+                if (!isFirstRead) {
+                    long framePositionDelta = timestamp.framePosition - lastFramePosition; 
+                    long nanoTimeDelta = timestamp.nanoTime - lastNanoTime;
 
-            Log.d("MicStream", "About to build bridge data");
+                    long expectedFrames = bufferSize;
+                    long expectedNanos = (long)((double)bufferSize / ((double)sampleRateInHz / 1000000000.0));
+                    long missedFrames = framePositionDelta - expectedFrames;
+                    long missedMs = (nanoTimeDelta - expectedNanos)/1000000;
+                    Log.d("MicStream", "delta frames " + framePositionDelta);
+                    Log.d("MicStream", "delta time ns " + nanoTimeDelta);
+
+                    accumulatedFrameDiff += missedFrames;
+                    accumulatedTimeDiff += missedMs;
+
+                    if (missedFrames != 0) {
+                        // Log or handle missed frames. For simplicity, logging here:
+                        // Log.d("MicStream", "Missed frames: " + missedFrames);
+                    }
+                    if (missedMs != 0) {
+                        // Log.d("MicStream", "Missed ms: " + missedMs);
+                    }
+                    Log.d("MicStream", "Accumumlated time diff ms: " + accumulatedTimeDiff);
+                    Log.d("MicStream", "Accumumlated frame diff: " + accumulatedFrameDiff);
+
+                } else {
+                    isFirstRead = false;
+                    accumulatedFrameDiff = 0;
+                    accumulatedTimeDiff = 0;
+                }
+                lastFramePosition = timestamp.framePosition;
+                lastNanoTime = timestamp.nanoTime;
+            }
+            // Log.d("MicStream", "About to build bridge data");
             for (float value : buffer) {
                 data.pushDouble((double) value);
             }
-            Log.d("MicStream", "Emit data.");
-            Log.d("MicStream", String.valueOf(buffer[0]));
-            Log.d("MicStream", String.valueOf(data.size()));
-            Log.d("MicStream", String.valueOf(data.getDouble(0)));
-
-
+            // Log.d("MicStream", "Emit data.");
+            // Log.d("MicStream", String.valueOf(buffer[0]));
+            // Log.d("MicStream", String.valueOf(data.size()));
+            // Log.d("MicStream", String.valueOf(data.getDouble(0)));
 
             eventEmitter.emit("audioData", data);
-            eventEmitter.emit("debug", "Hello");
         }
+        audioRecord.stop();
         Log.d("MicStream", "Recording thread exiting.");
+        isFirstRead = true; // Reset for the next start
+        
+
 
     }
 
