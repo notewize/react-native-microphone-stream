@@ -56,9 +56,9 @@ function App(): React.JSX.Element {
     console.log(`isRecording: ${isRecording}`);
     if (isRecording) {
       console.log('Starting audio recording...');
-      MicStream.addListener((data: number[]) => {
-        console.log('Data size: ', data.length);
-        setData(data.length);
+      MicStream.addListener((d: number[]) => {
+        console.log('Data size: ', d.length);
+        setData(d.length);
       });
       MicStream.start();
 
