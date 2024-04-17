@@ -6,7 +6,6 @@ console.log(emitter)
 
 interface StreamOptions {
   sampleRate?: number;
-  bufferSize?: number;
 }
 
 export default {
@@ -16,6 +15,9 @@ export default {
   },
   start: () => MicrophoneStream.start(),
   pause: () => MicrophoneStream.pause(),
-  addListener: (listener: (data: number[]) => void) => emitter.addListener('audioData', listener),
+  addListener: (bufferSize: number, listener: (data: number[]) => void) => { 
+    MicrophoneStream.allocateBuffer({bufferSize});
+    return emitter.addListener('audioData', listener);
+  },
   removeAllListeners: () => emitter.removeAllListeners('audioData'),
 };

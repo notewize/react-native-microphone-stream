@@ -48,6 +48,15 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
             eventEmitter = reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class);
         }
 
+        if (options.hasKey("sampleRate")) {
+            sampleRateInHz = options.getInt("sampleRate");
+        }
+    }
+
+    @ReactMethod
+    public void allocateBuffer(ReadableMap options) {
+        Log.d("MicStream", "allocateBuffer");
+
         if (running || (recordingThread != null && recordingThread.isAlive())) {
             return;
         }
@@ -59,10 +68,6 @@ class MicrophoneStreamModule extends ReactContextBaseJavaModule {
 
         // for parameter description, see
         // https://developer.android.com/reference/android/media/AudioRecord.html
-
-        if (options.hasKey("sampleRate")) {
-            sampleRateInHz = options.getInt("sampleRate");
-        }
 
         int channelConfig = AudioFormat.CHANNEL_IN_MONO;
         int audioFormat = AudioFormat.ENCODING_PCM_FLOAT;

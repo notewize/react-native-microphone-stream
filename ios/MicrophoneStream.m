@@ -31,8 +31,7 @@ RCT_EXPORT_METHOD(init:(NSDictionary *) options) {
     _category = [session category];
     _mode = [session mode];
     _sampleRate = options[@"sampleRate"] == nil ? 44100 : [options[@"sampleRate"] doubleValue];
-    _bufferSize = options[@"bufferSize"] == nil ? 4096 : [options[@"bufferSize"] unsignedIntegerValue];
-    _isFirstBuffer = YES;
+    _bufferSize = 4096;
     
     AudioStreamBasicDescription description;
     memset(&description, 0, sizeof(description));
@@ -47,38 +46,118 @@ RCT_EXPORT_METHOD(init:(NSDictionary *) options) {
     description.mFormatFlags =  kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked;
 
     AudioQueueNewInput(&description, inputCallback, (__bridge void *) self, NULL, NULL, 0, &_queue);
+}
+
+RCT_EXPORT_METHOD(allocateBuffer:(NSDictionary *) options) {
+
+    _bufferSize = options[@"bufferSize"] == nil ? 4096 : [options[@"bufferSize"] unsignedIntegerValue];
+    _isFirstBuffer = YES;
+
+    RCTLogInfo(@"bufferSize %lu", _bufferSize);
+
     AudioQueueAllocateBuffer(_queue, _bufferSize * 4, &_buffer);
     AudioQueueEnqueueBuffer(_queue, _buffer, 0, NULL);
 }
 
+- (BOOL)areHeadphonesConnected {
+    AVAudioSessionRouteDescription *route = [[AVAudioSession sharedInstance] currentRoute];
+    for (AVAudioSessionPortDescription *port in [route outputs]) {
+        if ([[port portType] isEqualToString:AVAudioSessionPortHeadphones] ||
+            [[port portType] isEqualToString:AVAudioSessionPortBluetoothA2DP] ||
+            [[port portType] isEqualToString:AVAudioSessionPortBluetoothHFP] ||
+            [[port portType] isEqualToString:AVAudioSessionPortBluetoothLE]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (AVAudioSessionPortDescription *)findBuiltInMic {
+    NSArray *availableInputs = [[AVAudioSession sharedInstance] availableInputs];
+    for (AVAudioSessionPortDescription *input in availableInputs) {
+        if ([input.portType isEqualToString:AVAudioSessionPortBuiltInMic]) {
+            return input;
+        }
+    }
+    return nil;
+}
+
 RCT_EXPORT_METHOD(start) {
+    NSError *error = nil;
+
     AVAudioSession *session = [AVAudioSession sharedInstance];
     [session setCategory:AVAudioSessionCategoryPlayAndRecord
-                   error:nil];
-    [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker
-                               error:nil];
+            withOptions:AVAudioSessionCategoryOptionAllowBluetoothA2DP
+            error:&error];
+
+    if (error) {
+        RCTLogInfo(@"Error setting audio session category: %@", error);
+    }
+
+    NSError *modeError = nil;
+    [session setMode:AVAudioSessionModeDefault error:&modeError];
+    if (error) {
+        RCTLogInfo(@"Error setting mode: %@", modeError);
+    }   
+
+    AVAudioSessionPortDescription *builtInMic = [self findBuiltInMic];
+
+    if (builtInMic) {
+        RCTLogInfo(@"Found built-in mic");
+
+        [session setPreferredInput:builtInMic error:&error];
+        if (error) {
+            RCTLogInfo(@"Error setting preferred audio input: %@", error);
+        }
+    } else {
+        RCTLogInfo(@"No built-in mic");
+        
+    }
+
+
+    NSError *activationError = nil;
+    BOOL success = [[AVAudioSession sharedInstance] setActive:YES error:&activationError];
+    if (!success) {
+        RCTLogInfo(@"Could not activate audio session: %@", activationError);
+    }
+    
+    // Check if headphones are connected
+    BOOL headphonesConnected = [self areHeadphonesConnected];
+
+    RCTLogInfo(@"Headphones connected?: %d", headphonesConnected);
+
+    NSError *overrideError = nil;
+    if (headphonesConnected) {
+        // Attempt to route audio to headphones
+        [session overrideOutputAudioPort:AVAudioSessionPortOverrideNone error:&overrideError];
+    } else {
+        // Force audio to play from the speaker
+        [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker error:&overrideError];
+    }
+    if (overrideError) {
+        RCTLogInfo(@"Error overriding output port: %@", error);
+    }
+
+
+
+
+    // [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker
+    //                            error:nil];
     AudioQueueStart(_queue, NULL);
     _lastSampleTime = 0;
     _isFirstBuffer = YES;
 }
 
 RCT_EXPORT_METHOD(pause) {
-    AudioQueuePause(_queue);
-    AudioQueueFlush(_queue);
-    AVAudioSession *session = [AVAudioSession sharedInstance];
-    [session setCategory:_category
-                   error:nil];
-    [session setMode:_mode
-               error:nil];
-}
-
-RCT_EXPORT_METHOD(stop) {
-    AVAudioSession *session = [AVAudioSession sharedInstance];
-    [session setCategory:_category
-                   error:nil];
-    [session setMode:_mode
-               error:nil];
+    // AudioQueuePause(_queue);
+    // AudioQueueFlush(_queue);
     AudioQueueStop(_queue, YES);
+
+    AVAudioSession *session = [AVAudioSession sharedInstance];
+    [session setCategory:_category
+                   error:nil];
+    [session setMode:_mode
+               error:nil];
 }
 
 - (void)processInputBuffer:(AudioQueueBufferRef)inBuffer queue:(AudioQueueRef)queue timestamp:(const AudioTimeStamp *)inStartTime {
@@ -92,24 +171,24 @@ RCT_EXPORT_METHOD(stop) {
     }
     eventBody[@"audioData"] = audioSamples;
 
-    if (!_isFirstBuffer) {
-        Float64 expectedTimeDifference = _bufferSize; // Yes a sampleTime is measured in our sampleRate apparently
-        Float64 timeDifference = inStartTime->mSampleTime - _lastSampleTime;
-        Float64 delta = expectedTimeDifference - timeDifference;
-        _accumulatedDiff += delta;
+    // if (!_isFirstBuffer) {
+    //     Float64 expectedTimeDifference = _bufferSize; // Yes a sampleTime is measured in our sampleRate apparently
+    //     Float64 timeDifference = inStartTime->mSampleTime - _lastSampleTime;
+    //     Float64 delta = expectedTimeDifference - timeDifference;
+    //     _accumulatedDiff += delta;
 
-        RCTLogInfo(@"sampleTime %.0f", inStartTime->mSampleTime);
-        RCTLogInfo(@"scalar %f", inStartTime->mRateScalar);
+    //     // RCTLogInfo(@"sampleTime %.0f", inStartTime->mSampleTime);
+    //     // RCTLogInfo(@"scalar %f", inStartTime->mRateScalar);
 
-        RCTLogInfo(@"timeDifference %.0f", timeDifference);
-        RCTLogInfo(@"delta %.0f", delta);
-        RCTLogInfo(@"accumulatedDiff %.0f", _accumulatedDiff);
-        RCTLogInfo(@"accumulatedDiff in ms %.0f", (_accumulatedDiff / _sampleRate) * 1000);
-    } else {
-        _isFirstBuffer = NO;
-        _accumulatedDiff = 0;
-    }
-    _lastSampleTime = inStartTime->mSampleTime;
+    //     // RCTLogInfo(@"timeDifference %.0f", timeDifference);
+    //     // RCTLogInfo(@"delta %.0f", delta);
+    //     // RCTLogInfo(@"accumulatedDiff %.0f", _accumulatedDiff);
+    //     // RCTLogInfo(@"accumulatedDiff in ms %.0f", (_accumulatedDiff / _sampleRate) * 1000);
+    // } else {
+    //     _isFirstBuffer = NO;
+    //     _accumulatedDiff = 0;
+    // }
+    // _lastSampleTime = inStartTime->mSampleTime;
 
     // [self sendEventWithName:@"audioData" body:eventBody];
     [self sendEventWithName:@"audioData" body:audioSamples];

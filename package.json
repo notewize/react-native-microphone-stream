@@ -1,6 +1,6 @@
 {
   "name": "react-native-microphone-stream",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "React Native module used for streaming audio from microphone",
   "author": "Eric Bloch <eric.bloch@notewize.com>",
   "license": "MIT",
